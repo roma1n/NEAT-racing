@@ -30,10 +30,10 @@ class GameConfig:
     max_velocity = 10
     min_angular_velocity = -5
     max_angular_velocity = 5
-    car_radar_angles = [90, 0, 180, 60, 120]
-    car_radar_max_lengths = [150, 50, 50, 100, 100]
+    car_radar_angles = [90, 0, 180, 45, 135]
+    car_radar_max_lengths = [250, 100, 100, 200, 200]
     car_anchor_points = [(15, 30), (-15, 30), (15, -30), (-15, -30), (0, 30), (0, -30)]
-    car_draw_radars = False
+    car_draw_radars = True
 
     # sprite paths
     car_sprite_path = 'pics/cars/car_blue_small_1.png'
