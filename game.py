@@ -1,6 +1,7 @@
 import pygame as pg
 from config import GameConfig, Level
 import math
+import copy
 
 
 class Road:
@@ -28,13 +29,13 @@ class Car:
     def rotared_sprite(self):
         return pg.transform.rotate(self.sprite, -self.rotation)
 
-    def update_radars(self, window):
+    def update_radars(self, track):
         # upadte aliveness
         for point in GameConfig.car_anchor_points:
             point = pg.Vector2(*point).rotate(self.rotation)
             point = (int(self.x + point.x), int(self.y + point.y))
             if point[0] < 0 or point[0] >= 1920 or point[1] < 0 or point[1] >= 1080 or \
-                window.get_at(point) == (0, 150, 0, 255):
+                track.get_at(point) == (0, 150, 0, 255):
                 self.alive = False
 
         self.radar_lengths = [0, 0, 0, 0, 0]
@@ -54,7 +55,7 @@ class Car:
 
             while int(self.x + length * c) >= 0 and int(self.x + length * c) < 1920 and \
                     int(self.y + length * s) >= 0 and int(self.y + length * s) < 1080 and \
-                    window.get_at((int(self.x + length * c), int(self.y + length * s))) != (0, 150, 0, 255) and length < max_lenght:
+                    track.get_at((int(self.x + length * c), int(self.y + length * s))) != (0, 150, 0, 255) and length < max_lenght:
                 length += 1
 
             if length == 0:
@@ -86,14 +87,19 @@ class Car:
         self.y += s * (GameConfig.min_velocity * (1 - gas) + GameConfig.max_velocity * gas)
         
 
+    def update_and_draw(self, window, track):
+        if not self.alive:
+            return
+        self.update_radars(track)
+        self.draw(window)
+
+
     def draw(self, window):
         if not self.alive:
             return
 
         current_sprite = self.rotared_sprite()
         rect = current_sprite.get_rect(center=(self.x, self.y))
-
-        self.update_radars(window)
 
         if GameConfig.car_draw_radars:
             self.draw_radars(window)
@@ -103,16 +109,14 @@ class Car:
 
 class Game:
     def __init__(self, window, drivers, info=None):
-        self.font = pg.font.Font('fonts/SourceSansPro-Black.otf', 40)
-        self.window = window
+        self.is_fps_limit = GameConfig.is_fps_limit
+        self.is_graphics = GameConfig.is_graphics
+        if self.is_graphics:
+            self.font = pg.font.Font('fonts/SourceSansPro-Black.otf', 40)
+            self.window = window
         self.drivers = drivers
-        self.info=info
         self.cars = []
-        for i in range(len(drivers)):
-            self.cars.append(Car(GameConfig.car_sprite_path, 1000, 988, 270))
-        self.cars_alive = len(self.cars)
         self.roads = []
-
         for y in range(len(Level.structure)):
             for x in range(len(Level.structure[y])):
                 pos = (320 + 128 * x, 92 + 128 * y)
@@ -146,44 +150,57 @@ class Game:
                     self.roads.append(
                         Road(GameConfig.road_sprite_paths[42], *pos)
                     )
+        self.track = pg.Surface(size=(1920, 1080))
+        self.draw_track()
+        self.info = info
+        for i in range(len(drivers)):
+            self.cars.append(Car(GameConfig.car_sprite_path, 1000, 988, 270))
+        self.cars_alive = len(self.cars)
 
     def on_exit(self, status):
         if status == 'quit':
             exit()
 
-    def draw(self):
-        pg.draw.rect(self.window, (0, 150, 0), (0, 0, 1920, 1080))
+    def draw_track(self):
+        pg.draw.rect(self.track, (0, 150, 0), (0, 0, 1920, 1080))
         for road in self.roads:
-            road.draw(self.window)
+            road.draw(self.track)
+    
+    def update_and_draw(self):
+        if self.is_graphics:
+            self.window.blit(self.track, (0, 0))
+            for car in self.cars:
+                car.update_and_draw(self.window, self.track)
 
-        for car in self.cars:
-            car.draw(self.window)
-
-        if self.info is not None:
+            if self.info is not None:
                 for num, line in enumerate(self.info().split('\n')):
                     text = self.font.render(line, True, (100, 0, 0))
                     text_rect = text.get_rect()
                     text_rect.topleft = (1300, 40 + num * 40)
                     self.window.blit(text, text_rect)
-
-        pg.display.update()
+            pg.display.update()
+        
+        else:
+            for car in self.cars:
+                car.update_radars(self.track)
 
     def start(self, max_time = -1):
         time = 0
         clock = pg.time.Clock()
         running = True
         while running:
-            self. draw()
+            self.update_and_draw()
 
             player_events = []
 
-            for event in pg.event.get():
-                if event.type == pg.QUIT:
-                    return self.on_exit('quit')
-                elif event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
-                    return self.on_exit('quit')
-                else:
-                    player_events.append(event)
+            if self.is_graphics:
+                for event in pg.event.get():
+                    if event.type == pg.QUIT:
+                        return self.on_exit('quit')
+                    elif event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+                        return self.on_exit('quit')
+                    else:
+                        player_events.append(event)
 
             for dirver, car in zip(self.drivers, self.cars):
                 dirver.drive(car, player_events)
@@ -200,4 +217,5 @@ class Game:
             if time == max_time:
                 running = False
 
-            clock.tick(60)
+            if self.is_fps_limit:
+                clock.tick(60)

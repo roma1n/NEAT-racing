@@ -1,7 +1,7 @@
 import neat
 import pickle
 import pygame as pg
-from config import AIConfig
+from config import AIConfig, GameConfig
 from game import Game
 from setuppygame import init_pygame, quit_pygame
 
@@ -25,6 +25,7 @@ class AIDriver:
 
 class AIDriverManager:
     def __init__(self, config_file):
+        self.is_graphics = GameConfig.is_graphics
         self.config = neat.config.Config(
             neat.DefaultGenome, 
             neat.DefaultReproduction,
@@ -64,25 +65,30 @@ class AIDriverManager:
 
 
     def study(self, generation_number):
-        self.window = init_pygame()
+        if self.is_graphics:
+            self.window = init_pygame()
+        else:
+            self.window = None
+
         self.winner = self.p.run(self.eval_genome, generation_number)
-        quit_pygame()
+
+        if self.is_graphics:
+            quit_pygame()
         return self.winner
 
 
 def train_ai():
     ai_driver_manager = AIDriverManager('neat-config.txt')
-    ai_driver_manager.study(50)
+    ai_driver_manager.study(10)
 
-    print('xxxxxxxxx')
     if AIConfig.save_best_net:
+        print('Saving best net')
         best_net = neat.nn.FeedForwardNetwork.create(
             ai_driver_manager.winner, 
             ai_driver_manager.config
         )
 
         with open(AIConfig.best_net_path, 'wb') as f:
-            print('saving net')
             pickle.dump(best_net, f)
 
 
@@ -109,5 +115,4 @@ def run_best_ai():
     run_ai([AIConfig.best_net_path])
 
 if __name__ == '__main__':
-    #train_ai()
     run_best_ai()

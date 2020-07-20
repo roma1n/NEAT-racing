@@ -32,6 +32,8 @@ class AIConfig:
 
 
 class GameConfig:
+    is_fps_limit = False
+    is_graphics = False
     # car
     min_velocity = 5
     max_velocity = 10
