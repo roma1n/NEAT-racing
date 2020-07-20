@@ -14,4 +14,3 @@ def init_pygame():
 
 def quit_pygame():
     pg.quit()
-    exit()

@@ -1,6 +1,7 @@
 import neat
+import pickle
 import pygame as pg
-from config import Controls
+from config import AIConfig
 from game import Game
 from setuppygame import init_pygame, quit_pygame
 
@@ -12,7 +13,6 @@ class AIDriver:
     def drive(self, car, player_events):
         gas, turn = self.net.activate(car.radar_lengths)
         gas = (gas + 1) * 0.5
-        #turn = (1 - abs(turn)) * (-1 if turn < 0 else 1)
         turn = (turn + 1) * 0.5
         car.drive(gas, turn)
 
@@ -65,11 +65,49 @@ class AIDriverManager:
 
     def study(self, generation_number):
         self.window = init_pygame()
-        winner = self.p.run(self.eval_genome, generation_number)
+        self.winner = self.p.run(self.eval_genome, generation_number)
         quit_pygame()
-        return winner
+        return self.winner
 
 
-if __name__ == '__main__':
+def train_ai():
     ai_driver_manager = AIDriverManager('neat-config.txt')
     ai_driver_manager.study(50)
+
+    print('xxxxxxxxx')
+    if AIConfig.save_best_net:
+        best_net = neat.nn.FeedForwardNetwork.create(
+            ai_driver_manager.winner, 
+            ai_driver_manager.config
+        )
+
+        with open(AIConfig.best_net_path, 'wb') as f:
+            print('saving net')
+            pickle.dump(best_net, f)
+
+
+def load_net(filename):
+    with open(filename, 'rb') as f:
+        net = pickle.load(f)
+        return net
+    return None
+
+def run_ai(filenames):
+    drivers = []
+    for filename in filenames:
+        net = load_net(filename)
+        if net is not None:
+            drivers.append(AIDriver(net))
+
+    window = init_pygame()
+    game = Game(window, drivers)
+    game.start()
+    quit_pygame()
+
+
+def run_best_ai():
+    run_ai([AIConfig.best_net_path])
+
+if __name__ == '__main__':
+    #train_ai()
+    run_best_ai()

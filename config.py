@@ -1,4 +1,5 @@
 import pygame as pg
+import os
 
 
 class Level:
@@ -22,6 +23,12 @@ class Level:
         ['v', 'g', 'v', 'g', 'v', 'g', 'g', 'g', 'v', 'g', 'g'],
         ['ru', 's', 'lu', 'g', 'ru', 's', 'f', 's', 'lu', 'g', 'g'],
     ]
+
+
+class AIConfig:
+    # best genome
+    save_best_net = True
+    best_net_path = 'nets/best.net'
 
 
 class GameConfig:
